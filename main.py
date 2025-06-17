@@ -20,7 +20,6 @@ def home():
     return "✅ Бот работает!"
 
 
-
 ALLOWED_USERS = [5644397480, 796365934]
 user_images = {}
 user_states = {}
@@ -73,7 +72,6 @@ def handle_photo(msg):
     downloaded_file = bot.download_file(file_info.file_path)
     image = Image.open(BytesIO(downloaded_file)).convert("RGBA")
 
-    # Установка фона
     if chat_id in user_images and user_images[chat_id].get('awaiting_bg'):
         global global_background
         global_background = image
@@ -85,13 +83,11 @@ def handle_photo(msg):
 
     bot.send_message(chat_id, "🛠 Обрабатываю фото...")
 
-    # Удаляем фон
     buffered = BytesIO()
     image.save(buffered, format="PNG")
     no_bg = remove(buffered.getvalue())
     object_no_bg = Image.open(BytesIO(no_bg)).convert("RGBA")
 
-    # Центрируем на фоне
     bg = global_background.copy()
     bg_w, bg_h = bg.size
     obj_w, obj_h = object_no_bg.size
@@ -101,12 +97,10 @@ def handle_photo(msg):
     pos = ((bg_w - new_size[0]) // 2, (bg_h - new_size[1]) // 2)
     bg.paste(object_resized, pos, object_resized)
 
-    # Сохраняем в память
     output = BytesIO()
     bg.save(output, format="PNG")
     output.seek(0)
 
-    # Добавим изображение в очередь
     if chat_id not in user_images:
         user_images[chat_id] = {'photos': []}
     if 'photos' not in user_images[chat_id]:
@@ -147,8 +141,7 @@ def handle_text(msg):
 
     elif state['step'] == 'color':
         state['color'] = msg.text
-        
-        
+
         caption = (
             f"🖤 <b>𝗠𝗢𝗡𝗩𝗢𝗜𝗥</b> | <i>Эстетика в каждой детали</i>\n\n"
             f"✨ <b>Люксовое качество</b>. Отборные модели, продуманные до мелочей.\n\n"
@@ -161,7 +154,6 @@ def handle_text(msg):
             f"📦 <i>Ограниченный тираж. Успей оформить до распродажи!</i>"
         )
 
-
         media_group = []
         images = state['images']
         for i, img in enumerate(images):
@@ -171,12 +163,20 @@ def handle_text(msg):
 
         bot.send_media_group(chat_id, media_group)
         user_states.pop(chat_id)
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-    # Запускаем бота в фоне
+    # Проверка окружения
+    IS_LOCAL = os.environ.get("RENDER") is None
+    PORT = int(os.environ.get("PORT", 5000))
+
+    print("🟡 Локальный запуск:", IS_LOCAL)
+    print(f"🔌 Слушаю порт: {PORT}")
+
+    # Запуск бота в фоне
     Thread(target=bot.infinity_polling, daemon=True).start()
 
-    # Flask-сервер в главном потоке (Render его будет видеть!)
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    # Flask-сервер для Render / UptimeRobot
+    app.run(host="0.0.0.0", port=PORT)

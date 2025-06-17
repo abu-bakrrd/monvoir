@@ -19,14 +19,6 @@ app = Flask('')
 def home():
     return "✅ Бот работает!"
 
-def run():
-    port = int(os.environ.get("PORT", 5000))  # ← ОБЯЗАТЕЛЬНО брать порт из окружения
-    app.run(host="0.0.0.0", port=port)
-
-def keep_alive():
-    t = Thread(target=run)
-    t.daemon = True
-    t.start()
 
 
 ALLOWED_USERS = [5644397480, 796365934]
@@ -181,5 +173,10 @@ def handle_text(msg):
         user_states.pop(chat_id)
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    keep_alive()         # Запускаем Flask-сервер
-    bot.infinity_polling()
+
+    # Запускаем бота в фоне
+    Thread(target=bot.infinity_polling, daemon=True).start()
+
+    # Flask-сервер в главном потоке (Render его будет видеть!)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)

@@ -185,4 +185,3 @@ bot.infinity_polling(
     long_polling_timeout=10,
     skip_pending=True
 )
-

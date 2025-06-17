@@ -18,7 +18,8 @@ def home():
     return "✅ Бот работает!"
 
 def run():
-    app.run(host='0.0.0.0', port=8080)
+    port = int(os.environ.get("PORT", 5000))  # ← ОБЯЗАТЕЛЬНО брать порт из окружения
+    app.run(host="0.0.0.0", port=port)
 
 def keep_alive():
     t = Thread(target=run)

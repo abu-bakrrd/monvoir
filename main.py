@@ -179,4 +179,4 @@ def handle_text(msg):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     keep_alive()         # Запускаем Flask-сервер
-    bot.polling()        # Запускаем бота
+    bot.infinity_polling()

@@ -9,17 +9,32 @@ from threading import Thread
 import os
 
 
-TOKEN = '7560565832:AAFQXWb1QWbyg3kAh056pFTUML3yS9xLbrA'
-bot = telebot.TeleBot(TOKEN)
+
 
 # === Flask для UptimeRobot ===
+
 app = Flask('')
+
 
 @app.route('/')
 def home():
-    return "✅ Бот работает!"
+    return "Я жив!"
 
 
+def run():
+    app.run(host='0.0.0.0', port=3000)
+
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+
+
+keep_alive()
+
+
+TOKEN = '7560565832:AAFQXWb1QWbyg3kAh056pFTUML3yS9xLbrA'
+bot = telebot.TeleBot(TOKEN)
 ALLOWED_USERS = [5644397480, 796365934]
 user_images = {}
 user_states = {}
@@ -165,18 +180,9 @@ def handle_text(msg):
         user_states.pop(chat_id)
 
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+bot.infinity_polling(
+    timeout=15,
+    long_polling_timeout=10,
+    skip_pending=True
+)
 
-    # Проверка окружения
-    IS_LOCAL = os.environ.get("RENDER") is None
-    PORT = int(os.environ.get("PORT", 5000))
-
-    print("🟡 Локальный запуск:", IS_LOCAL)
-    print(f"🔌 Слушаю порт: {PORT}")
-
-    # Запуск бота в фоне
-    Thread(target=bot.infinity_polling, daemon=True).start()
-
-    # Flask-сервер для Render / UptimeRobot
-    app.run(host="0.0.0.0", port=PORT)

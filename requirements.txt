@@ -1,4 +1,4 @@
 pyTelegramBotAPI==4.15.4
-rembg==2.0.50
+rembg==2.0.66
 Pillow==10.3.0
 onnxruntime==1.16.3

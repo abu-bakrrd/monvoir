@@ -8,39 +8,24 @@ from flask import Flask
 from threading import Thread
 import os
 
+# === Телеграм токен ===
+TOKEN = '7560565832:AAFQXWb1QWbyg3kAh056pFTUML3yS9xLbrA'
+bot = telebot.TeleBot(TOKEN)
 
-
-
-# === Flask для UptimeRobot ===
-
-app = Flask('')
-
+# === Flask для Render ===
+app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Я жив!"
+    return "✅ Бот работает!"
 
-
-def run():
-    app.run(host='0.0.0.0', port=3000)
-
-
-def keep_alive():
-    t = Thread(target=run)
-    t.start()
-
-
-keep_alive()
-
-
-TOKEN = '7560565832:AAFQXWb1QWbyg3kAh056pFTUML3yS9xLbrA'
-bot = telebot.TeleBot(TOKEN)
+# === Данные пользователей ===
 ALLOWED_USERS = [5644397480, 796365934]
 user_images = {}
 user_states = {}
 global_background = None
 
-
+# === Команда /start ===
 @bot.message_handler(commands=['start'])
 def start(msg):
     if msg.from_user.id not in ALLOWED_USERS:
@@ -51,7 +36,7 @@ def start(msg):
                      "Заверши отправку фото командой /done\n"
                      "Фон устанавливается через /setbg")
 
-
+# === Команда /setbg ===
 @bot.message_handler(commands=['setbg'])
 def set_background_start(msg):
     if msg.from_user.id not in ALLOWED_USERS:
@@ -59,14 +44,12 @@ def set_background_start(msg):
     bot.send_message(msg.chat.id, "📸 Отправь изображение для фона.")
     user_images[msg.chat.id] = {'awaiting_bg': True}
 
-
+# === Команда /done ===
 @bot.message_handler(commands=['done'])
 def finish_upload(msg):
     chat_id = msg.chat.id
-
     if chat_id not in user_images or not user_images[chat_id].get('photos'):
         return bot.send_message(chat_id, "❌ Сначала отправьте хотя бы одно фото.")
-
     bot.send_message(chat_id, "💰 Введите цену:")
     user_states[chat_id] = {
         'step': 'price',
@@ -74,7 +57,7 @@ def finish_upload(msg):
     }
     user_images.pop(chat_id)
 
-
+# === Обработка фото ===
 @bot.message_handler(content_types=['photo'])
 def handle_photo(msg):
     chat_id = msg.chat.id
@@ -87,6 +70,7 @@ def handle_photo(msg):
     downloaded_file = bot.download_file(file_info.file_path)
     image = Image.open(BytesIO(downloaded_file)).convert("RGBA")
 
+    # Фон
     if chat_id in user_images and user_images[chat_id].get('awaiting_bg'):
         global global_background
         global_background = image
@@ -98,11 +82,13 @@ def handle_photo(msg):
 
     bot.send_message(chat_id, "🛠 Обрабатываю фото...")
 
+    # Удаляем фон
     buffered = BytesIO()
     image.save(buffered, format="PNG")
     no_bg = remove(buffered.getvalue())
     object_no_bg = Image.open(BytesIO(no_bg)).convert("RGBA")
 
+    # Центрируем объект
     bg = global_background.copy()
     bg_w, bg_h = bg.size
     obj_w, obj_h = object_no_bg.size
@@ -112,23 +98,20 @@ def handle_photo(msg):
     pos = ((bg_w - new_size[0]) // 2, (bg_h - new_size[1]) // 2)
     bg.paste(object_resized, pos, object_resized)
 
+    # Сохраняем
     output = BytesIO()
     bg.save(output, format="PNG")
     output.seek(0)
 
     if chat_id not in user_images:
         user_images[chat_id] = {'photos': []}
-    if 'photos' not in user_images[chat_id]:
-        user_images[chat_id]['photos'] = []
-
     user_images[chat_id]['photos'].append(output)
     bot.send_message(chat_id, "📥 Фото добавлено. Отправь следующее или напиши /done")
 
-
+# === Обработка текста ===
 @bot.message_handler(content_types=['text'])
 def handle_text(msg):
     chat_id = msg.chat.id
-
     if chat_id not in user_states:
         return
 
@@ -164,7 +147,7 @@ def handle_text(msg):
             f"🏷 <b>Категория:</b> {state['category']}\n"
             f"👔 <b>Бренд:</b> {state['brand']}\n"
             f"📏 <b>Размеры:</b> {state['size']}\n"
-            f"🎨 <b>Цвет:</b> {state.get('color', '—')}\n\n"
+            f"🎨 <b>Цвет:</b> {state['color']}\n\n"
             f"🚚 <b>Карго:</b> <i>7–11 дней по Узбекистану</i>\n"
             f"📦 <i>Ограниченный тираж. Успей оформить до распродажи!</i>"
         )
@@ -179,9 +162,13 @@ def handle_text(msg):
         bot.send_media_group(chat_id, media_group)
         user_states.pop(chat_id)
 
+# === Запуск ===
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
 
-bot.infinity_polling(
-    timeout=15,
-    long_polling_timeout=10,
-    skip_pending=True
-)
+    # Запускаем бота в фоне
+    Thread(target=bot.infinity_polling, daemon=True).start()
+
+    # Flask в главном потоке (Render определит порт)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
